@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=400">
+    <title>English to Chinese Translator</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🌐 Translator</h1>
+        <div class="input-section">
+            <label for="input-text">英文输入：</label>
+            <textarea id="input-text" placeholder="输入或选中英文文本..."></textarea>
+        </div>
+        <button id="translate-btn">翻译 → 中文</button>
+        <div class="output-section">
+            <label>中文输出：</label>
+            <div id="output-text" class="output-box"></div>
+        </div>
+        <div class="footer">
+            <span id="status"></span>
+        </div>
+    </div>
+    <script src="popup.js"></script>
+</body>
+</html>
