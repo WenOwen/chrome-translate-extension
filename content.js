@@ -2,12 +2,12 @@
 let tooltip = null;
 
 // 创建翻译提示框
-function createTooltip(x, y, isLoading = false) {
+function createTooltip(x, y) {
     removeTooltip();
     
     tooltip = document.createElement('div');
-    tooltip.className = 'translate-tooltip' + (isLoading ? ' loading' : '');
-    tooltip.innerHTML = '<span class="close-btn" title="关闭">×</span><div class="content"></div>';
+    tooltip.className = 'translate-tooltip';
+    tooltip.innerHTML = '<span class="close-btn" title="关闭">×</span><div class="content">翻译中...</div>';
     tooltip.style.left = x + 'px';
     tooltip.style.top = y + 'px';
     document.body.appendChild(tooltip);
@@ -34,7 +34,7 @@ async function translateText(text, x, y) {
         return;
     }
     
-    createTooltip(x, y, true);
+    createTooltip(x, y);
     const contentDiv = tooltip.querySelector('.content');
     
     try {
@@ -42,14 +42,15 @@ async function translateText(text, x, y) {
         const response = await fetch(url);
         const data = await response.json();
         
-        if (data[0]) {
+        if (data && data[0]) {
             const translated = data[0].map(item => item[0]).join('');
             contentDiv.textContent = translated;
-            tooltip.classList.remove('loading');
+        } else {
+            contentDiv.textContent = '翻译结果为空';
         }
     } catch (error) {
-        contentDiv.textContent = '翻译失败: ' + error.message;
-        tooltip.classList.remove('loading');
+        contentDiv.textContent = '翻译失败';
+        console.error('翻译错误:', error);
     }
 }
 
@@ -80,34 +81,36 @@ document.addEventListener('dblclick', (e) => {
 
 // 点击其他地方关闭提示框
 document.addEventListener('click', (e) => {
-    if (!e.target.closest('.translate-tooltip')) {
+    if (tooltip && !e.target.closest('.translate-tooltip')) {
         removeTooltip();
     }
 });
 
 // 监听来自 background script 的消息
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.type === 'translateShortcut') {
-        // 快捷键触发的翻译
-        const selectedText = window.getSelection().toString().trim();
-        if (selectedText) {
-            const selection = window.getSelection();
-            const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
-            const rect = range ? range.getBoundingClientRect() : null;
-            const x = rect ? rect.left + window.scrollX : window.scrollX + 50;
-            const y = rect ? rect.bottom + window.scrollY + 10 : window.scrollY + 50;
-            translateText(selectedText, x, y);
-        } else {
-            showToast('请先选择要翻译的英文文本');
+    try {
+        if (request.type === 'translateShortcut') {
+            const selectedText = window.getSelection().toString().trim();
+            if (selectedText) {
+                const selection = window.getSelection();
+                const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+                const rect = range ? range.getBoundingClientRect() : null;
+                const x = rect ? rect.left + window.scrollX : 100;
+                const y = rect ? rect.bottom + window.scrollY + 10 : 100;
+                translateText(selectedText, x, y);
+            } else {
+                showToast('请先选择要翻译的英文文本');
+            }
+        } else if (request.type === 'translate') {
+            const selectedText = window.getSelection().toString().trim() || request.text;
+            if (selectedText) {
+                const rect = window.getSelection().getRangeAt(0)?.getBoundingClientRect();
+                const x = rect ? rect.left + window.scrollX : 100;
+                const y = rect ? rect.bottom + window.scrollY + 10 : 100;
+                translateText(selectedText, x, y);
+            }
         }
-    } else if (request.type === 'translate' && request.text) {
-        // 右键菜单触发的翻译
-        const selectedText = window.getSelection().toString().trim() || request.text;
-        if (selectedText) {
-            const rect = window.getSelection().getRangeAt(0)?.getBoundingClientRect();
-            const x = rect ? rect.left + window.scrollX : window.scrollX + 50;
-            const y = rect ? rect.bottom + window.scrollY + 10 : window.scrollY + 50;
-            translateText(selectedText, x, y);
-        }
+    } catch (error) {
+        console.error('Content script error:', error);
     }
 });
