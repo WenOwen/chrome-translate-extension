@@ -1,4 +1,4 @@
-// 翻译功能
+// Popup 翻译功能
 const inputText = document.getElementById('input-text');
 const outputText = document.getElementById('output-text');
 const translateBtn = document.getElementById('translate-btn');
@@ -49,11 +49,10 @@ async function translateToChinese(text) {
     throw new Error('翻译结果解析失败');
 }
 
-// 从当前标签页获取选中文字
-chrome.runtime.sendMessage({ type: 'getSelectedText' }, (response) => {
-    if (response && response.text) {
-        inputText.value = response.text;
-        // 自动触发翻译
+// 支持 Enter 键触发翻译
+inputText.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
         translateBtn.click();
     }
 });

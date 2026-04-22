@@ -5,7 +5,9 @@
   "description": "Translate English text to Chinese - Select text and press Alt+Q",
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "scripting",
+    "contextMenus"
   ],
   "host_permissions": [
     "*://*/*"
