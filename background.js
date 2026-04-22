@@ -1,7 +1,19 @@
 // Background Service Worker
+// 监听快捷键命令
+chrome.commands.onCommand.addListener(async (command) => {
+    if (command === 'translate') {
+        // 获取当前活动标签页
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tab) {
+            // 向 content script 发送翻译请求
+            chrome.tabs.sendMessage(tab.id, { type: 'translateShortcut' });
+        }
+    }
+});
+
+// 监听来自 popup 的消息
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'getSelectedText') {
-        // 从当前标签页获取选中文本
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             chrome.scripting.executeScript({
                 target: { tabId: tabs[0].id },
@@ -10,7 +22,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 sendResponse({ text: results[0]?.result || '' });
             });
         });
-        return true; // 保持消息通道
+        return true;
     }
 });
 
@@ -25,7 +37,6 @@ chrome.runtime.onInstalled.addListener(() => {
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
     if (info.menuItemId === 'translate-to-chinese' && info.selectionText) {
-        // 发送到 content script 进行翻译
         chrome.tabs.sendMessage(tab.id, {
             type: 'translate',
             text: info.selectionText

@@ -1,4 +1,4 @@
-// 右键菜单翻译功能
+// Content Script - 页面内翻译功能
 let tooltip = null;
 
 // 创建翻译提示框
@@ -12,7 +12,6 @@ function createTooltip(x, y, isLoading = false) {
     tooltip.style.top = y + 'px';
     document.body.appendChild(tooltip);
     
-    // 点击关闭
     tooltip.querySelector('.close-btn').addEventListener('click', (e) => {
         e.stopPropagation();
         removeTooltip();
@@ -30,13 +29,15 @@ function removeTooltip() {
 
 // 翻译文本
 async function translateText(text, x, y) {
-    if (!text || text.trim().length === 0) return;
+    if (!text || text.trim().length === 0) {
+        showToast('请先选择要翻译的英文文本');
+        return;
+    }
     
     createTooltip(x, y, true);
     const contentDiv = tooltip.querySelector('.content');
     
     try {
-        // 使用 Google Translate API
         const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q=' + encodeURIComponent(text);
         const response = await fetch(url);
         const data = await response.json();
@@ -52,16 +53,19 @@ async function translateText(text, x, y) {
     }
 }
 
-// 监听鼠标右键
-document.addEventListener('contextmenu', (e) => {
-    const selectedText = window.getSelection().toString().trim();
-    if (selectedText) {
-        // 延迟显示，等待菜单出现
-        setTimeout(() => {
-            // 使用Google翻译
-        }, 10);
-    }
-});
+function showToast(message) {
+    removeTooltip();
+    tooltip = document.createElement('div');
+    tooltip.className = 'translate-tooltip';
+    tooltip.innerHTML = `<span class="close-btn">×</span><div class="content">${message}</div>`;
+    tooltip.style.left = '50%';
+    tooltip.style.top = '50%';
+    tooltip.style.transform = 'translate(-50%, -50%)';
+    document.body.appendChild(tooltip);
+    
+    tooltip.querySelector('.close-btn').addEventListener('click', () => removeTooltip());
+    setTimeout(() => removeTooltip(), 2000);
+}
 
 // 双击翻译
 document.addEventListener('dblclick', (e) => {
@@ -81,14 +85,28 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// 与 popup 通信，接收选中的文字
+// 监听来自 background script 的消息
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.type === 'translate' && request.text) {
+    if (request.type === 'translateShortcut') {
+        // 快捷键触发的翻译
+        const selectedText = window.getSelection().toString().trim();
+        if (selectedText) {
+            const selection = window.getSelection();
+            const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+            const rect = range ? range.getBoundingClientRect() : null;
+            const x = rect ? rect.left + window.scrollX : window.scrollX + 50;
+            const y = rect ? rect.bottom + window.scrollY + 10 : window.scrollY + 50;
+            translateText(selectedText, x, y);
+        } else {
+            showToast('请先选择要翻译的英文文本');
+        }
+    } else if (request.type === 'translate' && request.text) {
+        // 右键菜单触发的翻译
         const selectedText = window.getSelection().toString().trim() || request.text;
         if (selectedText) {
             const rect = window.getSelection().getRangeAt(0)?.getBoundingClientRect();
-            const x = rect ? rect.left + window.scrollX : 100;
-            const y = rect ? rect.bottom + window.scrollY + 10 : 100;
+            const x = rect ? rect.left + window.scrollX : window.scrollX + 50;
+            const y = rect ? rect.bottom + window.scrollY + 10 : window.scrollY + 50;
             translateText(selectedText, x, y);
         }
     }

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "English to Chinese Translator",
   "version": "1.0",
-  "description": "Translate English text to Chinese with one click",
+  "description": "Translate English text to Chinese - Select text and press Alt+Q",
   "permissions": [
     "storage",
     "activeTab"
@@ -33,5 +33,14 @@
   ],
   "background": {
     "service_worker": "background.js"
+  },
+  "commands": {
+    "translate": {
+      "suggested_key": {
+        "default": "Alt+Q",
+        "mac": "Alt+Q"
+      },
+      "description": "Translate selected English text to Chinese"
+    }
   }
 }

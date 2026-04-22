@@ -4,7 +4,8 @@ A Chrome Extension that translates English text to Chinese with one click.
 
 ## Features
 
-- **Double-click translation**: Select English text and double-click to see instant translation
+- **Alt+Q Shortcut**: Select English text and press `Alt+Q` for instant translation ✨
+- **Double-click translation**: Double-click any English text for instant translation
 - **Right-click menu**: Right-click selected text → "Translate to Chinese"
 - **Popup panel**: Click the extension icon to open the translation panel
 
@@ -17,13 +18,20 @@ A Chrome Extension that translates English text to Chinese with one click.
 
 ## Usage
 
-### Method 1: Double-click
-Select any English text and double-click — a floating tooltip will show the Chinese translation.
+### Quick Start: Alt+Q (Recommended)
+1. Select any English text on any webpage
+2. Press `Alt+Q`
+3. Chinese translation appears instantly!
 
-### Method 2: Right-click Menu
+### Other Methods
+
+#### Double-click
+Select English text and double-click — a floating tooltip shows the Chinese translation.
+
+#### Right-click Menu
 Right-click on selected text and choose "🌐 翻译成中文" from the context menu.
 
-### Method 3: Popup Panel
+#### Popup Panel
 Click the extension icon in the toolbar to open the translation panel.
 
 ## Tech Stack
@@ -40,11 +48,19 @@ chrome-translate-extension/
 ├── popup.html         # Popup UI
 ├── popup.css          # Popup styles
 ├── popup.js           # Popup logic
-├── content.js         # Double-click/right-click translation
+├── content.js         # Shortcut/double-click/right-click translation
 ├── content.css        # Tooltip styles
 ├── background.js      # Service worker
 └── icons/             # Extension icons
 ```
+
+## Keyboard Shortcut
+
+| Shortcut | Action |
+|----------|--------|
+| `Alt+Q` | Translate selected English text to Chinese |
+
+> Note: On macOS, use `Option+Q` instead of `Alt+Q`
 
 ## License
 
