@@ -1,5 +1,6 @@
-// Content Script - 翻译浮窗 + 生词本
+// Content Script - 翻译浮窗 + 生词本 + 高亮标记
 let tooltip = null;
+let highlightMark = null;
 
 // 创建翻译浮窗
 function createTooltip(x, y, originalText, translatedText) {
@@ -49,6 +50,48 @@ function removeTooltip() {
     }
 }
 
+// 移除高亮
+function removeHighlight() {
+    if (highlightMark && highlightMark.parentNode) {
+        const parent = highlightMark.parentNode;
+        // 用文本节点替换高亮 span，保留文本内容
+        const textNode = document.createTextNode(highlightMark.textContent);
+        parent.replaceChild(textNode, highlightMark);
+        // 合并相邻的文本节点
+        parent.normalize();
+        highlightMark = null;
+    }
+}
+
+// 高亮选中文本
+function highlightSelection() {
+    removeHighlight();
+    
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    
+    const range = selection.getRangeAt(0);
+    if (range.collapsed) return;
+    
+    // 创建高亮 span
+    highlightMark = document.createElement('span');
+    highlightMark.className = 'translated-highlight';
+    highlightMark.textContent = selection.toString();
+    
+    // 用高亮 span 替换选中的内容
+    try {
+        range.deleteContents();
+        range.insertNode(highlightMark);
+    } catch (e) {
+        // 如果替换失败，尝试另一种方式
+        const selectedContent = selection.getRangeAt(0);
+        selectedContent.surroundContents(highlightMark);
+    }
+    
+    // 清除文字选择（但保留高亮）
+    selection.removeAllRanges();
+}
+
 // 加入生词本
 function addToWordbook(original, translated, btn) {
     chrome.runtime.sendMessage({
@@ -82,8 +125,10 @@ async function translateText(text, x, y) {
         if (data && data[0]) {
             const translated = data[0].map(item => item[0]).join('');
             contentDiv.textContent = translated;
-            // 更新按钮的 data-translated
             tooltip.querySelector('.add-word-btn').dataset.translated = translated;
+            
+            // 翻译成功后高亮原文
+            highlightSelection();
         } else {
             contentDiv.textContent = '翻译结果为空';
         }
@@ -94,6 +139,7 @@ async function translateText(text, x, y) {
 
 function showToast(message) {
     removeTooltip();
+    removeHighlight();
     const toast = document.createElement('div');
     toast.className = 'translate-tooltip';
     toast.style.left = '50%';
@@ -117,10 +163,18 @@ document.addEventListener('dblclick', (e) => {
     }
 });
 
-// 点击其他地方关闭
+// 点击其他地方关闭浮窗和提示
 document.addEventListener('click', (e) => {
     if (tooltip && !e.target.closest('.translate-tooltip')) {
         removeTooltip();
+    }
+});
+
+// ESC 键移除高亮和浮窗
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        removeTooltip();
+        removeHighlight();
     }
 });
 
