@@ -4,24 +4,232 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=400">
     <title>English to Chinese Translator</title>
-    <link rel="stylesheet" href="popup.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            width: 380px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            margin: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+        h1 {
+            font-size: 1.3rem;
+            color: #333;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .tab {
+            flex: 1;
+            padding: 10px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .input-section, .output-section {
+            margin-bottom: 12px;
+        }
+        label {
+            display: block;
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        textarea {
+            width: 100%;
+            height: 80px;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            resize: none;
+            font-family: inherit;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .output-box {
+            min-height: 60px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.6;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .status {
+            text-align: center;
+            margin-top: 8px;
+            font-size: 12px;
+            color: #999;
+        }
+        .status.success { color: #27ae60; }
+        .status.error { color: #e74c3c; }
+        
+        /* 生词本样式 */
+        .wordbook-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .word-count {
+            font-size: 12px;
+            color: #666;
+        }
+        .clear-btn {
+            padding: 4px 10px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        .word-list {
+            max-height: 350px;
+            overflow-y: auto;
+        }
+        .word-item {
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            position: relative;
+        }
+        .word-item .original {
+            font-size: 13px;
+            color: #333;
+            word-break: break-all;
+        }
+        .word-item .translated {
+            font-size: 14px;
+            color: #667eea;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+        .word-item .date {
+            font-size: 10px;
+            color: #999;
+            margin-top: 4px;
+        }
+        .word-item .delete-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 20px;
+            height: 20px;
+            background: rgba(231, 76, 60, 0.1);
+            border: none;
+            border-radius: 4px;
+            color: #e74c3c;
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 1;
+        }
+        .word-item .delete-btn:hover {
+            background: rgba(231, 76, 60, 0.2);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+        .empty-state .icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <h1>🌐 Translator</h1>
-        <div class="input-section">
-            <label for="input-text">英文输入：</label>
-            <textarea id="input-text" placeholder="输入或选中英文文本..."></textarea>
+        <h1>🌐 翻译器</h1>
+        
+        <div class="tabs">
+            <button class="tab active" data-tab="translate">翻译</button>
+            <button class="tab" data-tab="wordbook">生词本</button>
         </div>
-        <button id="translate-btn">翻译 → 中文</button>
-        <div class="output-section">
-            <label>中文输出：</label>
-            <div id="output-text" class="output-box"></div>
+        
+        <!-- 翻译面板 -->
+        <div class="tab-content active" id="translate-tab">
+            <div class="input-section">
+                <label>英文输入：</label>
+                <textarea id="input-text" placeholder="输入或粘贴英文..."></textarea>
+            </div>
+            <button id="translate-btn" class="btn">翻译 → 中文</button>
+            <div class="output-section" style="margin-top: 10px;">
+                <label>中文输出：</label>
+                <div id="output-text" class="output-box"></div>
+            </div>
+            <div id="status" class="status"></div>
         </div>
-        <div class="footer">
-            <span id="status"></span>
+        
+        <!-- 生词本面板 -->
+        <div class="tab-content" id="wordbook-tab">
+            <div class="wordbook-header">
+                <span class="word-count" id="word-count">共 0 个单词</span>
+                <button class="clear-btn" id="clear-btn">清空</button>
+            </div>
+            <div class="word-list" id="word-list">
+                <div class="empty-state">
+                    <div class="icon">📖</div>
+                    <div>生词本为空</div>
+                    <div style="font-size: 12px; margin-top: 4px;">选中英文按 Alt+Q 翻译，点击浮窗中的"加入生词本"</div>
+                </div>
+            </div>
         </div>
     </div>
+    
     <script src="popup.js"></script>
 </body>
 </html>

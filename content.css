@@ -1,41 +1,66 @@
+/* 翻译浮窗样式 */
 .translate-tooltip {
-    position: absolute;
+    position: fixed;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    padding: 10px 16px;
-    border-radius: 10px;
+    padding: 12px 16px;
+    border-radius: 12px;
     font-size: 14px;
-    max-width: 350px;
-    max-height: 200px;
+    max-width: 400px;
+    min-width: 200px;
+    max-height: 300px;
     overflow-y: auto;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
-    z-index: 999999;
+    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.4);
+    z-index: 2147483647;
     cursor: pointer;
-    transition: opacity 0.3s, transform 0.3s;
     line-height: 1.6;
     word-break: break-word;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    animation: tooltip-appear 0.2s ease-out;
 }
 
-.translate-tooltip:hover {
-    opacity: 0.9;
+@keyframes tooltip-appear {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .translate-tooltip .close-btn {
     position: absolute;
-    top: 5px;
-    right: 8px;
-    font-size: 16px;
+    top: 6px;
+    right: 10px;
+    font-size: 18px;
     opacity: 0.7;
+    cursor: pointer;
+    font-weight: bold;
 }
 
 .translate-tooltip .close-btn:hover {
     opacity: 1;
 }
 
-.translate-tooltip.loading::after {
-    content: "翻译中...";
+.translate-tooltip .content {
+    padding-right: 10px;
+}
+
+.translate-tooltip .add-word-btn {
     display: block;
-    text-align: center;
+    margin-top: 10px;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+    color: white;
     font-size: 12px;
-    opacity: 0.8;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.translate-tooltip .add-word-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
 }
