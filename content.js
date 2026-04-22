@@ -1,6 +1,6 @@
-// Content Script - 翻译浮窗 + 生词本 + 高亮标记
+// Content Script - 翻译浮窗 + 生词本 + 高亮
 let tooltip = null;
-let highlightMark = null;
+let highlightedSpan = null;
 
 // 创建翻译浮窗
 function createTooltip(x, y, originalText, translatedText) {
@@ -25,16 +25,11 @@ function createTooltip(x, y, originalText, translatedText) {
         removeTooltip();
     });
     
-    // 加入生词本按钮
     tooltip.querySelector('.add-word-btn').addEventListener('click', (e) => {
         e.stopPropagation();
         const btn = e.target;
-        const original = btn.dataset.original;
-        const translated = btn.dataset.translated;
-        addToWordbook(original, translated, btn);
+        addToWordbook(btn.dataset.original, btn.dataset.translated, btn);
     });
-    
-    return tooltip;
 }
 
 function escapeHtml(text) {
@@ -50,46 +45,44 @@ function removeTooltip() {
     }
 }
 
-// 移除高亮
-function removeHighlight() {
-    if (highlightMark && highlightMark.parentNode) {
-        const parent = highlightMark.parentNode;
-        // 用文本节点替换高亮 span，保留文本内容
-        const textNode = document.createTextNode(highlightMark.textContent);
-        parent.replaceChild(textNode, highlightMark);
-        // 合并相邻的文本节点
-        parent.normalize();
-        highlightMark = null;
+// 安全的文本高亮（使用 Selection API）
+function safeHighlight() {
+    // 移除旧高亮
+    if (highlightedSpan) {
+        try {
+            const parent = highlightedSpan.parentNode;
+            if (parent) {
+                const text = highlightedSpan.textContent;
+                parent.replaceChild(document.createTextNode(text), highlightedSpan);
+                parent.normalize();
+            }
+        } catch (e) {}
+        highlightedSpan = null;
     }
-}
-
-// 高亮选中文本
-function highlightSelection() {
-    removeHighlight();
     
     const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
     
-    const range = selection.getRangeAt(0);
-    if (range.collapsed) return;
-    
-    // 创建高亮 span
-    highlightMark = document.createElement('span');
-    highlightMark.className = 'translated-highlight';
-    highlightMark.textContent = selection.toString();
-    
-    // 用高亮 span 替换选中的内容
     try {
+        const range = selection.getRangeAt(0);
+        if (range.collapsed) return;
+        
+        // 创建高亮 span
+        const span = document.createElement('span');
+        span.className = 'translated-highlight';
+        span.textContent = range.toString();
+        
+        // 尝试用高亮替换选中内容
         range.deleteContents();
-        range.insertNode(highlightMark);
+        range.insertNode(span);
+        
+        // 清除选择
+        selection.removeAllRanges();
+        
+        highlightedSpan = span;
     } catch (e) {
-        // 如果替换失败，尝试另一种方式
-        const selectedContent = selection.getRangeAt(0);
-        selectedContent.surroundContents(highlightMark);
+        console.log('Highlight failed:', e);
     }
-    
-    // 清除文字选择（但保留高亮）
-    selection.removeAllRanges();
 }
 
 // 加入生词本
@@ -107,9 +100,9 @@ function addToWordbook(original, translated, btn) {
     });
 }
 
-// 翻译文本
+// 翻译
 async function translateText(text, x, y) {
-    if (!text || text.trim().length === 0) {
+    if (!text || !text.trim()) {
         showToast('请先选择要翻译的英文文本');
         return;
     }
@@ -126,83 +119,72 @@ async function translateText(text, x, y) {
             const translated = data[0].map(item => item[0]).join('');
             contentDiv.textContent = translated;
             tooltip.querySelector('.add-word-btn').dataset.translated = translated;
-            
-            // 翻译成功后高亮原文
-            highlightSelection();
+            safeHighlight();
         } else {
             contentDiv.textContent = '翻译结果为空';
         }
     } catch (error) {
-        contentDiv.textContent = '翻译失败';
+        contentDiv.textContent = '翻译失败，请重试';
     }
 }
 
 function showToast(message) {
     removeTooltip();
-    removeHighlight();
     const toast = document.createElement('div');
     toast.className = 'translate-tooltip';
-    toast.style.left = '50%';
-    toast.style.top = '50%';
-    toast.style.transform = 'translate(-50%, -50%)';
+    toast.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);';
     toast.innerHTML = `<span class="close-btn">×</span><div class="content">${message}</div>`;
     document.body.appendChild(toast);
-    
     toast.querySelector('.close-btn').addEventListener('click', () => removeTooltip());
     setTimeout(() => removeTooltip(), 2000);
 }
 
 // 双击翻译
 document.addEventListener('dblclick', (e) => {
-    const selectedText = window.getSelection().toString().trim();
-    if (selectedText) {
+    const selected = window.getSelection().toString().trim();
+    if (selected) {
         const rect = window.getSelection().getRangeAt(0).getBoundingClientRect();
-        const x = Math.min(rect.left + window.scrollX, window.innerWidth - 420);
-        const y = Math.min(rect.bottom + window.scrollY + 10, window.innerHeight - 200);
-        translateText(selectedText, x, y);
+        translateText(selected, rect.left, rect.bottom + 5);
     }
 });
 
-// 点击其他地方关闭浮窗和提示
+// 点击其他地方关闭
 document.addEventListener('click', (e) => {
     if (tooltip && !e.target.closest('.translate-tooltip')) {
         removeTooltip();
     }
 });
 
-// ESC 键移除高亮和浮窗
+// ESC 移除高亮
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         removeTooltip();
-        removeHighlight();
+        if (highlightedSpan) {
+            try {
+                const parent = highlightedSpan.parentNode;
+                if (parent) {
+                    const text = highlightedSpan.textContent;
+                    parent.replaceChild(document.createTextNode(text), highlightedSpan);
+                    parent.normalize();
+                }
+            } catch (err) {}
+            highlightedSpan = null;
+        }
     }
 });
 
-// 监听 background 消息
+// 监听快捷键和右键菜单
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    try {
-        if (request.type === 'translateShortcut') {
-            const selectedText = window.getSelection().toString().trim();
-            if (selectedText) {
-                const range = window.getSelection().rangeCount > 0 ? window.getSelection().getRangeAt(0) : null;
-                const rect = range ? range.getBoundingClientRect() : null;
-                const x = rect ? Math.min(rect.left + window.scrollX, window.innerWidth - 420) : 100;
-                const y = rect ? Math.min(rect.bottom + window.scrollY + 10, window.innerHeight - 200) : 100;
-                translateText(selectedText, x, y);
-            } else {
-                showToast('请先选择要翻译的英文文本');
-            }
-        } else if (request.type === 'translate') {
-            const selectedText = window.getSelection().toString().trim() || request.text;
-            if (selectedText) {
-                const range = window.getSelection().rangeCount > 0 ? window.getSelection().getRangeAt(0) : null;
-                const rect = range ? range.getBoundingClientRect() : null;
-                const x = rect ? Math.min(rect.left + window.scrollX, window.innerWidth - 420) : 100;
-                const y = rect ? Math.min(rect.bottom + window.scrollY + 10, window.innerHeight - 200) : 100;
-                translateText(selectedText, x, y);
-            }
+    if (request.type === 'translateShortcut' || request.type === 'translate') {
+        const selected = window.getSelection().toString().trim() || request.text;
+        if (selected) {
+            const range = window.getSelection().rangeCount > 0 ? window.getSelection().getRangeAt(0) : null;
+            const rect = range ? range.getBoundingClientRect() : null;
+            const x = rect ? rect.left : 100;
+            const y = rect ? rect.bottom + 5 : 100;
+            translateText(selected, x, y);
+        } else {
+            showToast('请先选择要翻译的英文文本');
         }
-    } catch (error) {
-        console.error('Content script error:', error);
     }
 });

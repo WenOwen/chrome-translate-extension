@@ -1,9 +1,7 @@
-// Background Service Worker
-console.log('Background script starting');
+// Background Service Worker - 简化版
 
-// 注册右键菜单
+// 安装时创建右键菜单
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('Creating context menu');
   chrome.contextMenus.create({
     id: 'translate-to-chinese',
     title: '🌐 翻译成中文',
@@ -11,9 +9,8 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
-// 右键菜单点击
+// 右键菜单
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  console.log('Context menu clicked:', info.selectionText);
   if (info.menuItemId === 'translate-to-chinese' && info.selectionText) {
     chrome.tabs.sendMessage(tab.id, {
       type: 'translate',
@@ -22,36 +19,27 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }
 });
 
-// 快捷键命令
+// 快捷键
 chrome.commands.onCommand.addListener((command) => {
-  console.log('Command:', command);
   if (command === 'translate') {
-    chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-      if (tabs && tabs[0] && tabs[0].id) {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]) {
         chrome.tabs.sendMessage(tabs[0].id, { type: 'translateShortcut' });
       }
     });
   }
 });
 
-// 消息监听（来自 content script 和 popup）
+// 消息
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log('Message received:', request.type);
-  
   if (request.type === 'getSelectedText') {
-    chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-      if (tabs && tabs[0] && tabs[0].id) {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]) {
         chrome.scripting.executeScript({
           target: { tabId: tabs[0].id },
-          func: function() {
-            return window.getSelection().toString().trim();
-          }
-        }, function(results) {
-          if (results && results[0]) {
-            sendResponse({ text: results[0].result || '' });
-          } else {
-            sendResponse({ text: '' });
-          }
+          func: () => window.getSelection().toString().trim()
+        }, (results) => {
+          sendResponse({ text: results?.[0]?.result || '' });
         });
       } else {
         sendResponse({ text: '' });
@@ -60,56 +48,44 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
   
-  // 添加到生词本
   if (request.type === 'addWord') {
-    chrome.storage.sync.get(['wordbook'], function(result) {
+    chrome.storage.sync.get(['wordbook'], (result) => {
       const wordbook = result.wordbook || [];
-      const newWord = {
+      wordbook.unshift({
         original: request.original,
         translated: request.translated,
         date: new Date().toISOString()
-      };
-      wordbook.unshift(newWord); // 最新在前
-      // 限制最多保存 500 条
-      if (wordbook.length > 500) {
-        wordbook.pop();
-      }
-      chrome.storage.sync.set({ wordbook: wordbook }, function() {
-        sendResponse({ success: true, count: wordbook.length });
       });
-    });
-    return true;
-  }
-  
-  // 获取生词本
-  if (request.type === 'getWordbook') {
-    chrome.storage.sync.get(['wordbook'], function(result) {
-      sendResponse({ wordbook: result.wordbook || [] });
-    });
-    return true;
-  }
-  
-  // 删除生词
-  if (request.type === 'deleteWord') {
-    chrome.storage.sync.get(['wordbook'], function(result) {
-      let wordbook = result.wordbook || [];
-      wordbook = wordbook.filter(function(w, i) {
-        return i !== request.index;
-      });
-      chrome.storage.sync.set({ wordbook: wordbook }, function() {
+      if (wordbook.length > 500) wordbook.pop();
+      chrome.storage.sync.set({ wordbook }, () => {
         sendResponse({ success: true });
       });
     });
     return true;
   }
   
-  // 清空生词本
+  if (request.type === 'getWordbook') {
+    chrome.storage.sync.get(['wordbook'], (result) => {
+      sendResponse({ wordbook: result.wordbook || [] });
+    });
+    return true;
+  }
+  
+  if (request.type === 'deleteWord') {
+    chrome.storage.sync.get(['wordbook'], (result) => {
+      const wordbook = result.wordbook || [];
+      wordbook.splice(request.index, 1);
+      chrome.storage.sync.set({ wordbook }, () => {
+        sendResponse({ success: true });
+      });
+    });
+    return true;
+  }
+  
   if (request.type === 'clearWordbook') {
-    chrome.storage.sync.set({ wordbook: [] }, function() {
+    chrome.storage.sync.set({ wordbook: [] }, () => {
       sendResponse({ success: true });
     });
     return true;
   }
 });
-
-console.log('Background script initialized');
